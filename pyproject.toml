@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+# from https://peps.python.org/pep-0621/
+[project]
+name = "wwg"
+version = "0.0.1"
+description = "Weibo Wordcloud Generator"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "replica42", email = "replica42@outlook.com" }]
+maintainers = []
+keywords = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "dacite~=1.8.1",
+    "html5lib~=1.1",
+    "requests~=2.31.0",
+    "tomli~=2.0.1",
+    "typer[all]~=0.9.0",
+    "beautifulsoup4~=4.12.2"
+]
+
+[project.optional-dependencies]
+dev = ["black", "flake8", "isort", "mypy", "ipython", "pre-commit"]
+
+[project.urls]
+Homepage = "https://github.com/replica-42/wwg"
+Source = "https://github.com/replica-42/wwg"
+
+[project.scripts]
+wwg = "wwg.__main__:entry"
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+namespace_packages = false
+
+disallow_any_unimported = true
+# disallow_any_expr = true
+disallow_any_decorated = true
+disallow_any_explicit = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+
+extra_checks = true
+strict_equality = true
