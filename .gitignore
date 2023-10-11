@@ -280,3 +280,7 @@ cython_debug/
 
 
 config.toml
+fonts/
+dict.txt
+weibo.jsonl
+weibo.png

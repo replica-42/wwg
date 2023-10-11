@@ -14,12 +14,22 @@ class CrawlConfig:
     cookies: str
     max_page: int = -1
     after: datetime = datetime(datetime.now().year, 1, 1)
-    dest: Path = Path("weibo.jsonl")
+    output: Path = Path("weibo.jsonl").resolve()
+
+
+@dataclass
+class GenerateConfig:
+    input: Path | None = None
+    font: Path | None = None
+    mask: Path | None = None
+    custom_dict: Path | None = None
+    output: Path = Path("weibo.png").resolve()
 
 
 @dataclass
 class Config:
     crawl: CrawlConfig
+    generate: GenerateConfig
 
 
 def config_logger(verbose: bool) -> None:

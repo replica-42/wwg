@@ -1,1 +1,2 @@
 include src/wwg/py.typed
+include src/wwg/stopwords.txt

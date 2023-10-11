@@ -10,7 +10,7 @@ from typing import Callable, Generator
 import requests
 from bs4 import BeautifulSoup, Tag
 
-from wwg.config import Config
+from wwg.config import CrawlConfig
 
 logger = logging.getLogger(__name__)
 time_pattern = r"(?:(?:今天)|(?:(?P<month>\d\d)月(?P<day>\d\d)日)|(?:(?P<yyyy>\d\d\d\d)-(?P<MM>\d\d)-(?P<dd>\d\d)))\s(?P<HH>\d\d):(?P<mm>\d\d)(?::(?P<ss>\d\d))?.*"  # noqa
@@ -73,24 +73,22 @@ def next_page_predictor(tag: Tag) -> bool:
     return tag.name == "a" and tag.has_attr("href") and tag.text.strip() == "下页"
 
 
-def main(config: Config) -> None:
+def main(config: CrawlConfig) -> None:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.33",  # noqa
-        "Cookie": config.crawl.cookies,
+        "Cookie": config.cookies,
         "Accept": "text/html",
     }
-    url = f"{base_url}/{config.crawl.uid}/profile"
-    with open(config.crawl.dest, "w", encoding="utf-8") as f:
+    url = f"{base_url}/{config.uid}/profile"
+    with open(config.output, "w", encoding="utf-8") as f:
         current_page = 1
         flag = True
-        while flag and (
-            config.crawl.max_page < 0 or current_page <= config.crawl.max_page
-        ):
+        while flag and (config.max_page < 0 or current_page <= config.max_page):
             weibo_iter = crawl_page(url, headers)
             try:
                 while True:
                     weibo = next(weibo_iter)
-                    if weibo.create_at < config.crawl.after:
+                    if weibo.create_at < config.after:
                         flag = False
                         break
                     f.write(f"{weibo}\n")

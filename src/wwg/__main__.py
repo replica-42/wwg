@@ -6,6 +6,7 @@ from typing import Annotated, Optional
 import typer
 
 import wwg.crawl
+import wwg.generate
 from wwg.config import Config, init_config
 
 logger = logging.getLogger("wwg")
@@ -46,9 +47,11 @@ def crawl(
         Optional[datetime],
         typer.Option(help="crawl Weibo posts published later than this time"),
     ] = None,
-    dest: Annotated[
+    output: Annotated[
         Optional[Path],
-        typer.Option(help="crawling result storage path (format: JSONL)"),
+        typer.Option(
+            help="crawling result storage path (format: JSONL)", resolve_path=True
+        ),
     ] = None,
 ) -> None:
     if CONFIG is None:
@@ -56,8 +59,77 @@ def crawl(
         raise typer.Exit(code=-1)
     for name, value in ctx.params.items():
         if value is not None:
+            if name == "output":
+                value = Path(value)
             CONFIG.crawl.__setattr__(name, value)
-    wwg.crawl.main(CONFIG)
+    wwg.crawl.main(CONFIG.crawl)
+
+
+@app.command(
+    help="Generate Weibo wordcloud. If options are not specified explicitly, values in the configuration file are used."  # noqa
+)
+def generate(
+    ctx: typer.Context,
+    input: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="crawled weibo path (format: JSONL). If this option is not provided, the value of crawl.output is used (default: weibo.jsonl)",  # noqa
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+        ),
+    ] = None,
+    font: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="wordcloud font path",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+        ),
+    ] = None,
+    mask: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="wordcloud mask image path",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+        ),
+    ] = None,
+    custom_dict: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="jieba custom dict path",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+        ),
+    ] = None,
+    output: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="generated wordclout path",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+        ),
+    ] = None,
+) -> None:
+    if CONFIG is None:
+        logger.error("Configuration initialization failed")
+        raise typer.Exit(code=-1)
+    for name, value in ctx.params.items():
+        if value is not None:
+            CONFIG.generate.__setattr__(name, Path(value))
+    if CONFIG.generate.input is None:
+        CONFIG.generate.input = CONFIG.crawl.output
+    wwg.generate.main(CONFIG.generate)
 
 
 def entry() -> None:
