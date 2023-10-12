@@ -89,7 +89,7 @@ def crawl(
     logger.debug(f"max_page: {config.max_page}")
     logger.debug(f"after: {config.after}")
     logger.debug(f"output: {config.output}")
-    # wwg.crawl.main(config)
+    wwg.crawl.main(config)
 
 
 @app.command(
@@ -99,7 +99,7 @@ def crawl(
 )
 def generate(
     input: Annotated[
-        Path,
+        Optional[Path],
         typer.Option(
             help="crawled weibo path (format: JSONL). "
             "If this option is not provided, "
@@ -109,7 +109,7 @@ def generate(
             readable=True,
             resolve_path=True,
         ),
-    ] = CONFIG.crawl.output,
+    ] = None,
     font: Annotated[
         Optional[Path],
         typer.Option(
@@ -142,7 +142,10 @@ def generate(
     ] = None,
     max_word: Annotated[
         Optional[int],
-        typer.Option(help="wordcloud max word num", callback=lambda x: max(1, x)),
+        typer.Option(
+            help="wordcloud max word num",
+            callback=lambda x: max(1, x) if x is not None else None,
+        ),
     ] = None,
     output: Annotated[
         Optional[Path],
@@ -162,6 +165,16 @@ def generate(
     update_config(config, "custom_dict", custom_dict)
     update_config(config, "max_word", max_word)
     update_config(config, "output", output)
+
+    if config.input is None:
+        config.input = CONFIG.crawl.output
+
+    if config.input is None:
+        raise typer.BadParameter(
+            "input is None, "
+            "please specify via command line parameters "
+            "or configuration file entries"
+        )
 
     logger.debug(f"input: {config.input}")
     logger.debug(f"font: {config.font}")

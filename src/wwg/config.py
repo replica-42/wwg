@@ -51,7 +51,11 @@ def init_logger(verbose: bool) -> None:
 def init_config(config_file: Path) -> Config:
     config_str = config_file.read_text(encoding="utf-8")
     config_dict = tomli.loads(config_str)
-    return dacite.from_dict(Config, config_dict, config=dacite.Config(cast=[Path]))
+    return dacite.from_dict(
+        Config,
+        config_dict,
+        config=dacite.Config(type_hooks={Path: lambda s: Path(s).resolve()}),
+    )
 
 
 def update_config(config: object, name: str, value: object | None) -> None:
