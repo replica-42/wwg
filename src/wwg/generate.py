@@ -9,6 +9,7 @@ import jieba
 import numpy as np
 import typer
 import wordcloud
+from numpy.typing import NDArray
 from PIL import Image
 
 import wwg
@@ -34,6 +35,7 @@ def main(config: GenerateConfig) -> None:
     if config.input is None or not config.input.exists() or not config.input.is_file():
         raise typer.BadParameter(f"cannor read input file {config.input}")
     if config.custom_dict is not None:
+        logger.debug(f"load custom_dict from {config.mask}")
         jieba.load_userdict(str(config.custom_dict))
     weibo_list = config.input.read_text(encoding="utf-8").split("\n")
     weibo_list = [weibo.strip() for weibo in weibo_list]
@@ -44,7 +46,7 @@ def main(config: GenerateConfig) -> None:
         img = Image.open(str(config.mask)).convert("RGB")
         mask = np.array(img)
         logger.debug(f"load mask from {config.mask}")
-    generate_wordcloud(word_list, config.output, config.font, mask)
+    generate_wordcloud(word_list, config.output, config.max_word, config.font, mask)
 
 
 def split_word(weibo_list: list[str]) -> list[str]:
@@ -85,16 +87,17 @@ def split_word(weibo_list: list[str]) -> list[str]:
 def generate_wordcloud(
     word_list: list[str],
     output: Path,
+    max_word: int,
     font_path: Path | None = None,
-    mask: np.ndarray | None = None,
-):
+    mask: NDArray[np.uint8] | None = None,
+) -> None:
     color_func = wordcloud.get_single_color_func("deepskyblue")
     cloud = wordcloud.WordCloud(
         font_path=str(font_path) if font_path is not None else None,
         mask=mask,
         background_color="white",
         prefer_horizontal=1,
-        max_words=400,
+        max_words=max_word,
         scale=2,
         color_func=color_func,
     )

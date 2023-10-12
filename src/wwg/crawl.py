@@ -57,6 +57,10 @@ def weibo_predictor(tag: Tag) -> bool:
     )
 
 
+def repost_predictor(tag: Tag) -> bool:
+    return tag.has_attr("class") and "cmt" in tag.attrs["class"]
+
+
 def content_predictor(tag: Tag) -> bool:
     return tag.name == "span" and tag.has_attr("class") and "ctt" in tag.attrs["class"]
 
@@ -76,7 +80,7 @@ def next_page_predictor(tag: Tag) -> bool:
 def main(config: CrawlConfig) -> None:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.33",  # noqa
-        "Cookie": config.cookies,
+        "Cookie": config.cookies if config.cookies is not None else "",
         "Accept": "text/html",
     }
     url = f"{base_url}/{config.uid}/profile"
@@ -84,7 +88,7 @@ def main(config: CrawlConfig) -> None:
         current_page = 1
         flag = True
         while flag and (config.max_page < 0 or current_page <= config.max_page):
-            weibo_iter = crawl_page(url, headers)
+            weibo_iter = crawl_page(url, headers, config.original_only)
             try:
                 while True:
                     weibo = next(weibo_iter)
@@ -102,7 +106,9 @@ def main(config: CrawlConfig) -> None:
             time.sleep(1 + random.random())
 
 
-def crawl_page(url: str, headers: dict[str, str]) -> Generator[Weibo, None, str | None]:
+def crawl_page(
+    url: str, headers: dict[str, str], original_only: bool
+) -> Generator[Weibo, None, str | None]:
     if (
         response := retry_get(url, headers, lambda r: r.status_code == 200)
     ) is not None:
@@ -112,6 +118,8 @@ def crawl_page(url: str, headers: dict[str, str]) -> Generator[Weibo, None, str 
         )
         weibo_list: list[Tag] = soup.find_all(weibo_predictor)
         for weibo in weibo_list:
+            if original_only and len(weibo.find_all(repost_predictor)) > 0:
+                continue
             weibo_id = weibo.attrs["id"].removeprefix("M_")
             if (
                 full_text := weibo.find(full_text_predictor)
@@ -127,7 +135,7 @@ def crawl_page(url: str, headers: dict[str, str]) -> Generator[Weibo, None, str 
         ):
             return next_page.attrs["href"]
         else:
-            logger.info("cannot find next page href")
+            logger.debug("cannot find next page href")
             return None
     else:
         logger.error(f"crawl page {url} failed")
@@ -191,5 +199,5 @@ def parse_time(s: str) -> datetime:
             int(s) if (s := match.group("ss")) is not None else 0,
         )
 
-    logger.error(f"cannot parse create time: {s}, return datetime.now() instead.")
+    logger.warning(f"cannot parse create time: {s}, return datetime.now() instead.")
     return now
