@@ -96,11 +96,15 @@ $ wwg crawl --help
 
 `original_only` 类型为布尔，默认为 false。该配置为真时仅保存原创微博
 
+`start_page` 类型为整数，该配置指定爬取的起始页数，该参数必须大于等于 1，默认值为 1
+
 `max_page` 类型为整数，该配置值指定爬取的最大页数。默认值为 -1，即不限制最大页数
 
 `after` 类型为各地日期时刻，默认值为 `yyyy-01-01T00:00:00`，其中 yyyy 为当前的年数。该配置项指定爬取的最早时间。同时指定 `max_page` 与该项时会在第一次到达其中一个限制时停止爬取
 
 `output` 类型为字符串，默认值为 `weibo.jsonl`，结果保存路径
+
+crawl 爬取时在两次请求间会默认睡眠 3-5 秒，防止访问频率过高被 403
 
 ### wwg generate 子命令
 
@@ -114,6 +118,8 @@ generate 子命令的配置项均位于表 `generate` 下
 
 `custom_dict` 类型为字符串，指定 jieba 分词时使用的自定义词典路径。对于一些分词算法未能识别的专用词语（如人名/作品名），可以通过自定义词典指导分词。词典类型为文本文件，格式为一个词语一行。更多细节参见 [jieba](https://github.com/fxsjy/jieba) 文档。默认值为空，即不使用词典
 
+`before` 与 `after` 指定创建词云的微博时间区间，默认 `before` 为当前时间，`after` 为 1970 年 1 月 1 日，即不做限制，使用 `input` 的所有内容
+
 `max_word` 类型为整数，指定词云中词语的个数。默认值为 400
 
 `output` 类型为字符串，指定词云图片的保存路径。默认值为 `weibo.png`
@@ -125,6 +131,7 @@ generate 子命令的配置项均位于表 `generate` 下
 uid = ""
 cookies = ""
 original_only = true
+start_page = 5
 max_page = 20
 after = 2023-10-01T00:00:00
 output = "my_weibo.jsonl"
@@ -134,6 +141,8 @@ output = "my_weibo.jsonl"
 font = "C:\\Windows\\Fonts\\simsun.ttc"
 mask = "mask/2023.png"
 custom_dict = "dict.txt"
+before = 2022-01-01T00:00:00
+after = 2021-01-01T00:00:00
 max_word = 300
 output = "my_weibo.png"
 ```
