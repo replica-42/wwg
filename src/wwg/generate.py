@@ -1,6 +1,7 @@
 import json
 import logging
 from collections import Counter
+from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
 from string import punctuation
@@ -17,6 +18,8 @@ from wwg.config import GenerateConfig
 
 logger = logging.getLogger(__name__)
 
+jieba.setLogLevel(logging.ERROR)
+
 
 def get_stopwords() -> set[str]:
     result = set(
@@ -24,7 +27,7 @@ def get_stopwords() -> set[str]:
     )
     for p in punctuation:
         result.add(p)
-    for p in "，。？《》；：”“’‘【】、——（）……￥！·":
+    for p in "，。？《》；：”“’‘【】、——（）……￥！·「」":
         result.add(p)
     result.add(" ")
     result.add("\n")
@@ -35,12 +38,12 @@ def main(config: GenerateConfig) -> None:
     if config.input is None or not config.input.exists() or not config.input.is_file():
         raise typer.BadParameter(f"cannor read input file {config.input}")
     if config.custom_dict is not None:
-        logger.debug(f"load custom_dict from {config.mask}")
+        logger.debug(f"load custom_dict from {config.custom_dict}")
         jieba.load_userdict(str(config.custom_dict))
     weibo_list = config.input.read_text(encoding="utf-8").split("\n")
     weibo_list = [weibo.strip() for weibo in weibo_list]
     weibo_list = [weibo for weibo in weibo_list if weibo != ""]
-    word_list = split_word(weibo_list)
+    word_list = split_word(weibo_list, config.before, config.after)
     mask = None
     if config.mask is not None and config.mask.exists():
         img = Image.open(str(config.mask)).convert("RGB")
@@ -49,7 +52,8 @@ def main(config: GenerateConfig) -> None:
     generate_wordcloud(word_list, config.output, config.max_word, config.font, mask)
 
 
-def split_word(weibo_list: list[str]) -> list[str]:
+def split_word(weibo_list: list[str], before: datetime, after: datetime) -> list[str]:
+    count, length = 0, 0
     stopwords = get_stopwords()
     result: list[str] = []
     for weibo in weibo_list:
@@ -59,6 +63,11 @@ def split_word(weibo_list: list[str]) -> list[str]:
             logger.error(f"cannot parse {weibo}")
             continue
 
+        create_at = datetime.strptime(content["create_at"], "%Y-%m-%dT%H:%M:%S")
+        if create_at < after or create_at > before:
+            continue
+        count += 1
+        length += len(content["content"])
         word_list = jieba.lcut(content["content"], cut_all=True, HMM=True)
         for word in word_list:
             if (
@@ -80,7 +89,11 @@ def split_word(weibo_list: list[str]) -> list[str]:
                 need_remove.add(t)
 
     result = [word for word in result if word not in need_remove]
-
+    logger.debug(
+        f"using {count} Weibo posts with {length} characters, {len(result)} words"
+    )
+    counter = Counter(result)
+    logger.debug(f"most common: {counter.most_common(30)}")
     return result
 
 

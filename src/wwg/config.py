@@ -15,6 +15,7 @@ class CrawlConfig:
     uid: str | None = None
     cookies: str | None = None
     original_only: bool = False
+    start_page: int = 1
     max_page: int = -1
     after: datetime = datetime(datetime.now().year, 1, 1)
     output: Path = Path("weibo.jsonl").resolve()
@@ -26,6 +27,8 @@ class GenerateConfig:
     font: Path | None = None
     mask: Path | None = None
     custom_dict: Path | None = None
+    before: datetime = datetime.now()
+    after: datetime = datetime(1970, 1, 1)
     max_word: int = 400
     output: Path = Path("weibo.png").resolve()
 

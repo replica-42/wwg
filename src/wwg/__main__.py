@@ -53,6 +53,7 @@ def crawl(
     original_only: Annotated[
         Optional[bool], typer.Option(help="only crawl original Weibo")
     ] = None,
+    start_page: Annotated[Optional[int], typer.Option(help="crawl start page")] = None,
     max_page: Annotated[
         Optional[int], typer.Option(help="maximum number of crawled pages")
     ] = None,
@@ -71,6 +72,7 @@ def crawl(
     update_config(config, "uid", uid)
     update_config(config, "cookies", cookies)
     update_config(config, "original_only", original_only)
+    update_config(config, "start_page", start_page)
     update_config(config, "max_page", max_page)
     update_config(config, "after", after)
     update_config(config, "output", output)
@@ -84,8 +86,11 @@ def crawl(
             "cookie is missing, "
             "please provide it via command line argument or configuration file"
         )
+    if config.start_page < 1:
+        raise typer.BadParameter("start page must greater than 1")
     logger.debug(f"uid: {config.uid}")
     logger.debug(f"original_only: {config.original_only}")
+    logger.debug(f"start_page: {config.start_page}")
     logger.debug(f"max_page: {config.max_page}")
     logger.debug(f"after: {config.after}")
     logger.debug(f"output: {config.output}")
@@ -140,6 +145,14 @@ def generate(
             resolve_path=True,
         ),
     ] = None,
+    before: Annotated[
+        Optional[datetime],
+        typer.Option(help="using Weibo posts published earlier than this time"),
+    ] = None,
+    after: Annotated[
+        Optional[datetime],
+        typer.Option(help="using Weibo posts published later than this time"),
+    ] = None,
     max_word: Annotated[
         Optional[int],
         typer.Option(
@@ -150,8 +163,7 @@ def generate(
     output: Annotated[
         Optional[Path],
         typer.Option(
-            help="generated wordclout path",
-            exists=True,
+            help="generated wordcloud path",
             dir_okay=False,
             readable=True,
             resolve_path=True,
@@ -163,6 +175,8 @@ def generate(
     update_config(config, "font", font)
     update_config(config, "mask", mask)
     update_config(config, "custom_dict", custom_dict)
+    update_config(config, "before", before)
+    update_config(config, "after", after)
     update_config(config, "max_word", max_word)
     update_config(config, "output", output)
 
@@ -180,6 +194,8 @@ def generate(
     logger.debug(f"font: {config.font}")
     logger.debug(f"mask: {config.mask}")
     logger.debug(f"custom_dict: {config.custom_dict}")
+    logger.debug(f"before: {config.before}")
+    logger.debug(f"after: {config.after}")
     logger.debug(f"max_word: {config.max_word}")
     logger.debug(f"output: {config.output}")
 

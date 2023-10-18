@@ -58,7 +58,11 @@ def weibo_predictor(tag: Tag) -> bool:
 
 
 def repost_predictor(tag: Tag) -> bool:
-    return tag.has_attr("class") and "cmt" in tag.attrs["class"]
+    return (
+        tag.has_attr("class")
+        and "cmt" in tag.attrs["class"]
+        and tag.text.startswith("转发理由")
+    )
 
 
 def content_predictor(tag: Tag) -> bool:
@@ -84,8 +88,10 @@ def main(config: CrawlConfig) -> None:
         "Accept": "text/html",
     }
     url = f"{base_url}/{config.uid}/profile"
+    if config.start_page > 1:
+        url = f"{url}?page={config.start_page}"
     with open(config.output, "w", encoding="utf-8") as f:
-        current_page = 1
+        current_page = config.start_page
         flag = True
         while flag and (config.max_page < 0 or current_page <= config.max_page):
             weibo_iter = crawl_page(url, headers, config.original_only)
@@ -102,8 +108,8 @@ def main(config: CrawlConfig) -> None:
                 else:
                     break
             current_page += 1
-            # sleep 1~2 s
-            time.sleep(1 + random.random())
+            # sleep 2~3 s
+            time.sleep(3 + random.random() * 2)
 
 
 def crawl_page(
@@ -127,9 +133,11 @@ def crawl_page(
                 yield from crawl_full_text(
                     weibo_id, f"{base_url}{full_text.attrs['href']}", headers
                 )
-                time.sleep(1 + random.random())
+                time.sleep(3 + random.random() * 2)
             elif (result := parse_weibo(weibo_id, weibo)) is not None:
                 yield result
+            else:
+                logger.warning(f"parse weibo {weibo_id} failed")
         if (next_page := soup.find(next_page_predictor)) is not None and isinstance(
             next_page, Tag
         ):
