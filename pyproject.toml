@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 # from https://peps.python.org/pep-0621/
 [project]
 name = "wwg"
-version = "0.2.0"
+version = "0.2.1"
 description = "Weibo Wordcloud Generator"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -23,9 +23,9 @@ dependencies = [
     "dacite~=1.8.1",
     "html5lib~=1.1",
     "jieba~=0.42.1",
-    "requests~=2.31.0",
-    "tomli~=2.0.1",
-    "typer[all]~=0.9.0",
+    "requests~=2.32.3",
+    "tomli~=2.2.1",
+    "typer~=0.15.0",
     "wordcloud~=1.9.2",
 ]
 
