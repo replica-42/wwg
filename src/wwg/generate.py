@@ -81,6 +81,9 @@ def split_word(weibo_list: list[str], before: datetime, after: datetime) -> list
     need_remove = set(x for x, y in counter.items() if y == 1)
     result = [word for word in result if word not in need_remove]
 
+    exclude = {"网页链接", "网页", "链接"}
+    result = [word for word in result if word not in exclude]
+
     unique_result = set(result)
     need_remove = set()
     for s in unique_result:
@@ -104,7 +107,7 @@ def generate_wordcloud(
     font_path: Path | None = None,
     mask: NDArray[np.uint8] | None = None,
 ) -> None:
-    color_func = wordcloud.get_single_color_func("deepskyblue")
+    color_func = wordcloud.get_single_color_func("#D90E2C")
     cloud = wordcloud.WordCloud(
         font_path=str(font_path) if font_path is not None else None,
         mask=mask,

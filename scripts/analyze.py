@@ -47,6 +47,8 @@ def plot_polar_by_month() -> None:
     ax.grid(axis="both", linestyle="--")
     ax.bar(theta, radii, width=width, bottom=0.0, color=colors, alpha=0.5)
 
+    plt.title("按月分布的微博字数", fontname="Microsoft YaHei", y=1.08)
+
     plt.box(False)
     plt.show()
 
@@ -88,9 +90,7 @@ def plot_polar_by_hour() -> None:
     ax.grid(axis="both", linestyle="--")
     ax.bar(theta, radii, width=width, bottom=0.0, color=colors, alpha=0.5)
 
+    plt.title("按时段分布的微博字数", fontname="Microsoft YaHei", y=1.08)
+
     plt.box(False)
     plt.show()
-
-
-if __name__ == "__main__":
-    plot_polar_by_hour()
