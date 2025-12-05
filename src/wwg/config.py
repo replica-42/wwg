@@ -3,11 +3,19 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from enum import StrEnum
 
 import dacite
 import tomli
 
 logger = logging.getLogger(__name__)
+
+
+class SplitUse(StrEnum):
+    JIEBA = "jieba"
+    THULAC = "thulac"
+    PKUSEG = "pkuseg"
+    HANLP = "hanlp"
 
 
 @dataclass
@@ -31,6 +39,7 @@ class GenerateConfig:
     after: datetime = datetime(1970, 1, 1)
     max_word: int = 400
     output: Path = Path("weibo.png").resolve()
+    split_use: SplitUse = SplitUse.JIEBA
 
 
 @dataclass
@@ -57,7 +66,12 @@ def init_config(config_file: Path) -> Config:
     return dacite.from_dict(
         Config,
         config_dict,
-        config=dacite.Config(type_hooks={Path: lambda s: Path(s).resolve()}),
+        config=dacite.Config(
+            type_hooks={
+                Path: lambda s: Path(s).resolve(),
+                SplitUse: lambda s: SplitUse(s),
+            }
+        ),
     )
 
 

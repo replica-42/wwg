@@ -7,7 +7,7 @@ import typer
 
 import wwg.crawl
 import wwg.generate
-from wwg.config import Config, init_config, init_logger, update_config
+from wwg.config import Config, init_config, init_logger, update_config, SplitUse
 
 logger = logging.getLogger("wwg")
 
@@ -169,6 +169,12 @@ def generate(
             resolve_path=True,
         ),
     ] = None,
+    split_use: Annotated[
+        Optional[SplitUse],
+        typer.Option(
+            help="word segmentation tool, choose from 'jieba', 'thulac', 'pkuseg'",
+        )
+    ] = None,
 ) -> None:
     config = CONFIG.generate
     update_config(config, "input", input)
@@ -179,6 +185,7 @@ def generate(
     update_config(config, "after", after)
     update_config(config, "max_word", max_word)
     update_config(config, "output", output)
+    update_config(config, "split_use", split_use)
 
     if config.input is None:
         config.input = CONFIG.crawl.output
@@ -198,6 +205,7 @@ def generate(
     logger.debug(f"after: {config.after}")
     logger.debug(f"max_word: {config.max_word}")
     logger.debug(f"output: {config.output}")
+    logger.debug(f"split_use: {config.split_use}")
 
     wwg.generate.main(CONFIG.generate)
 

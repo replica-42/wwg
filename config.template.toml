@@ -13,3 +13,4 @@ mask = "mask/2023.png"
 custom_dict = "dict.txt"
 max_word = 300
 output = "my_weibo.png"
+split_use = "hanlp"

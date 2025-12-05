@@ -8,13 +8,16 @@ from string import punctuation
 
 import jieba
 import numpy as np
+import pkuseg
+import thulac
+import hanlp
 import typer
 import wordcloud
 from numpy.typing import NDArray
 from PIL import Image
 
 import wwg
-from wwg.config import GenerateConfig
+from wwg.config import GenerateConfig, SplitUse
 
 logger = logging.getLogger(__name__)
 
@@ -37,25 +40,75 @@ def get_stopwords() -> set[str]:
 def main(config: GenerateConfig) -> None:
     if config.input is None or not config.input.exists() or not config.input.is_file():
         raise typer.BadParameter(f"cannor read input file {config.input}")
+
+    hantok = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
+    hantok.dict_force = None
+    hantok.dict_combine = None
     if config.custom_dict is not None:
         logger.debug(f"load custom_dict from {config.custom_dict}")
+        dict_content = set(config.custom_dict.read_text(encoding="utf-8").split("\n"))
         jieba.load_userdict(str(config.custom_dict))
+        thu = thulac.thulac(
+            user_dict=str(config.custom_dict),
+            seg_only=True,
+            filt=True,
+            rm_space=True,
+            T2S=True,
+        )
+        pku = pkuseg.pkuseg(model_name="web", user_dict=str(config.custom_dict))
+        hantok.dict_force = dict_content
+    else:
+        thu = thulac.thulac(seg_only=True, filt=True, rm_space=True, T2S=True)
+        pku = pkuseg.pkuseg(model_name="web")
+
     weibo_list = config.input.read_text(encoding="utf-8").split("\n")
     weibo_list = [weibo.strip() for weibo in weibo_list]
     weibo_list = [weibo for weibo in weibo_list if weibo != ""]
-    word_list = split_word(weibo_list, config.before, config.after)
+
+    word_list = split_word(
+        weibo_list, config.before, config.after, config.split_use, thu, pku, hantok
+    )
+
     mask = None
     if config.mask is not None and config.mask.exists():
         img = Image.open(str(config.mask)).convert("RGB")
         mask = np.array(img)
         logger.debug(f"load mask from {config.mask}")
+
     generate_wordcloud(word_list, config.output, config.max_word, config.font, mask)
 
 
-def split_word(weibo_list: list[str], before: datetime, after: datetime) -> list[str]:
+def split_use_jieba(content: str) -> list[str]:
+    return jieba.lcut(content, cut_all=True, HMM=True)  # type: ignore
+
+
+def split_use_thulac(thu: thulac.thulac, content: str) -> list[str]:  # type: ignore
+    return [word[0] for word in thu.cut(content)]
+
+
+def split_use_pkuseg(pku: pkuseg.pkuseg, content: str) -> list[str]:  # type: ignore
+    return pku.cut(content)  # type: ignore
+
+
+def split_use_hanlp(  # type: ignore
+    hantok: hanlp.components.tokenizers.Tokenizer, content: str
+) -> list[str]:
+    return hantok(content)  # type: ignore
+
+
+def split_word(  # type: ignore
+    weibo_list: list[str],
+    before: datetime,
+    after: datetime,
+    split_use: SplitUse,
+    thu: thulac.thulac,
+    pku: pkuseg.pkuseg,
+    hantok: hanlp.components.tokenizers.Tokenizer,
+) -> list[str]:
     count, length = 0, 0
     stopwords = get_stopwords()
     result: list[str] = []
+
     for weibo in weibo_list:
         try:
             content: dict[str, str] = json.loads(weibo)
@@ -68,7 +121,15 @@ def split_word(weibo_list: list[str], before: datetime, after: datetime) -> list
             continue
         count += 1
         length += len(content["content"])
-        word_list = jieba.lcut(content["content"], cut_all=True, HMM=True)
+        if split_use == SplitUse.PKUSEG:
+            word_list = split_use_pkuseg(pku, content["content"])
+        elif split_use == SplitUse.THULAC:
+            word_list = split_use_thulac(thu, content["content"])
+        elif split_use == SplitUse.HANLP:
+            word_list = split_use_hanlp(hantok, content["content"])
+        else:  # SplitUse.JIEBA
+            word_list = split_use_jieba(content["content"])
+
         for word in word_list:
             if (
                 word not in stopwords
@@ -76,14 +137,15 @@ def split_word(weibo_list: list[str], before: datetime, after: datetime) -> list
                 and not all(letter in stopwords for letter in word)
             ):
                 result.append(word)
-    # remove word that only appears once
-    counter = Counter(result)
-    need_remove = set(x for x, y in counter.items() if y == 1)
-    result = [word for word in result if word not in need_remove]
 
-    exclude = {"网页链接", "网页", "链接"}
+    # remove single character words
+    result = [word for word in result if len(word) > 1]
+
+    # remove some common words
+    exclude = {"网页链接", "网页", "链接", "jpg", ".jpg"}
     result = [word for word in result if word not in exclude]
 
+    # remove subwords
     unique_result = set(result)
     need_remove = set()
     for s in unique_result:
@@ -92,6 +154,12 @@ def split_word(weibo_list: list[str], before: datetime, after: datetime) -> list
                 need_remove.add(t)
 
     result = [word for word in result if word not in need_remove]
+
+    # remove word that only appears once
+    counter = Counter(result)
+    need_remove = set(x for x, y in counter.items() if y == 1)
+    result = [word for word in result if word not in need_remove]
+
     logger.debug(
         f"using {count} Weibo posts with {length} characters, {len(result)} words"
     )
