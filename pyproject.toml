@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9.15,<0.10.0"]
+build-backend = "uv_build"
 
 # from https://peps.python.org/pep-0621/
 [project]
@@ -19,18 +19,18 @@ classifiers = [
 ]
 
 dependencies = [
-    "beautifulsoup4~=4.13.4",
+    "beautifulsoup4~=4.14.3",
     "dacite~=1.9.2",
     "html5lib~=1.1",
     "jieba~=0.42.1",
     "requests~=2.32.4",
-    "tomli~=2.2.1",
-    "typer~=0.16.0",
+    "tomli~=2.3.0",
+    "typer~=0.20.0",
     "wordcloud~=1.9.4",
 ]
 
 [project.optional-dependencies]
-dev = ["black", "flake8", "isort", "mypy", "ipython", "pre-commit"]
+dev = ["black", "flake8", "isort", "mypy", "ipython", "pre-commit", "types-requests", "types-beautifulsoup4"]
 
 [project.urls]
 Homepage = "https://github.com/replica-42/wwg"
