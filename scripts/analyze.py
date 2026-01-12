@@ -16,7 +16,7 @@ def load_weibo(filename: str) -> list[tuple[str, datetime]]:
     return result
 
 
-def plot_polar_by_month() -> None:
+def plot_polar_by_month(year: int) -> None:
     weibo_list = load_weibo("weibo.jsonl")
 
     # 12 months
@@ -26,7 +26,7 @@ def plot_polar_by_month() -> None:
 
     words_count = [0] * N
     for weibo in weibo_list:
-        if weibo[1].year == 2024:
+        if weibo[1].year == year:
             words_count[weibo[1].month - 1] += len(weibo[0])
 
     radii = np.array(words_count, dtype=np.int32)
@@ -53,7 +53,7 @@ def plot_polar_by_month() -> None:
     plt.show()
 
 
-def plot_polar_by_hour() -> None:
+def plot_polar_by_hour(year: int) -> None:
     weibo_list = load_weibo("weibo.jsonl")
 
     # 24 Hours
@@ -63,7 +63,7 @@ def plot_polar_by_hour() -> None:
 
     words_count = [0] * N
     for weibo in weibo_list:
-        if weibo[1].year == 2024:
+        if weibo[1].year == year:
             words_count[weibo[1].hour - 1] += len(weibo[0])
 
     radii = np.array(words_count, dtype=np.int32)
@@ -94,3 +94,6 @@ def plot_polar_by_hour() -> None:
 
     plt.box(False)
     plt.show()
+
+
+plot_polar_by_month(2025)

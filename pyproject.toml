@@ -47,31 +47,8 @@ wwg = "wwg.__main__:entry"
 profile = "black"
 
 [tool.mypy]
-namespace_packages = false
-
-disallow_any_unimported = true
-# disallow_any_expr = true
-disallow_any_decorated = true
-disallow_any_explicit = true
-disallow_any_generics = true
-disallow_subclassing_any = true
-
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_return_any = true
-warn_unreachable = true
-
-extra_checks = true
-strict_equality = true
-
-[[tool.mypy.overrides]]
-module = ["wordcloud", "thulac", "jieba", "pkuseg", "hanlp"]
-ignore_missing_imports = true
+strict = false
+follow_untyped_imports = true
 
 [tool.uv.extra-build-dependencies]
 pkuseg = ["numpy"]

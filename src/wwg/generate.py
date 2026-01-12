@@ -6,13 +6,15 @@ from importlib.resources import files
 from pathlib import Path
 from string import punctuation
 
+import hanlp
+import hanlp.pretrained
 import jieba
 import numpy as np
 import pkuseg
 import thulac
-import hanlp
 import typer
 import wordcloud
+from hanlp.common.component import Component
 from numpy.typing import NDArray
 from PIL import Image
 
@@ -42,8 +44,8 @@ def main(config: GenerateConfig) -> None:
         raise typer.BadParameter(f"cannor read input file {config.input}")
 
     hantok = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
-    hantok.dict_force = None
-    hantok.dict_combine = None
+    hantok.dict_force = None  # type: ignore
+    hantok.dict_combine = None  # type: ignore
     if config.custom_dict is not None:
         logger.debug(f"load custom_dict from {config.custom_dict}")
         dict_content = set(config.custom_dict.read_text(encoding="utf-8").split("\n"))
@@ -56,7 +58,7 @@ def main(config: GenerateConfig) -> None:
             T2S=True,
         )
         pku = pkuseg.pkuseg(model_name="web", user_dict=str(config.custom_dict))
-        hantok.dict_force = dict_content
+        hantok.dict_force = dict_content  # type: ignore
     else:
         thu = thulac.thulac(seg_only=True, filt=True, rm_space=True, T2S=True)
         pku = pkuseg.pkuseg(model_name="web")
@@ -79,31 +81,29 @@ def main(config: GenerateConfig) -> None:
 
 
 def split_use_jieba(content: str) -> list[str]:
-    return jieba.lcut(content, cut_all=True, HMM=True)  # type: ignore
+    return jieba.lcut(content, cut_all=True, HMM=True)
 
 
-def split_use_thulac(thu: thulac.thulac, content: str) -> list[str]:  # type: ignore
+def split_use_thulac(thu: thulac.thulac, content: str) -> list[str]:
     return [word[0] for word in thu.cut(content)]
 
 
-def split_use_pkuseg(pku: pkuseg.pkuseg, content: str) -> list[str]:  # type: ignore
+def split_use_pkuseg(pku: pkuseg.pkuseg, content: str) -> list[str]:
     return pku.cut(content)  # type: ignore
 
 
-def split_use_hanlp(  # type: ignore
-    hantok: hanlp.components.tokenizers.Tokenizer, content: str
-) -> list[str]:
-    return hantok(content)  # type: ignore
+def split_use_hanlp(hantok: Component, content: str) -> list[str]:
+    return hantok(content)
 
 
-def split_word(  # type: ignore
+def split_word(
     weibo_list: list[str],
     before: datetime,
     after: datetime,
     split_use: SplitUse,
     thu: thulac.thulac,
     pku: pkuseg.pkuseg,
-    hantok: hanlp.components.tokenizers.Tokenizer,
+    hantok: Component,
 ) -> list[str]:
     count, length = 0, 0
     stopwords = get_stopwords()
@@ -175,7 +175,7 @@ def generate_wordcloud(
     font_path: Path | None = None,
     mask: NDArray[np.uint8] | None = None,
 ) -> None:
-    color_func = wordcloud.get_single_color_func("#D90E2C")
+    # color_func = wordcloud.get_single_color_func("#D90E2C")
     cloud = wordcloud.WordCloud(
         font_path=str(font_path) if font_path is not None else None,
         mask=mask,
@@ -183,7 +183,8 @@ def generate_wordcloud(
         prefer_horizontal=1,
         max_words=max_word,
         scale=2,
-        color_func=color_func,
+        # color_func=color_func,
+        colormap="ocean",
     )
     cloud.generate(" ".join(word_list))
     cloud.to_file(output)
