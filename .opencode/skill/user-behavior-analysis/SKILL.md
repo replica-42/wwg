@@ -1,26 +1,44 @@
 ---
 name: user-behavior-analysis
-description: Analyzes user behavior and preferences from social media posts within a specific time period. Use when analyzing user data for personalized emotional companionship and behavior patterns.
+description: Analyzes user behavior and preferences from social media posts within a specific time period. This skill should be used when analyzing user data for personalized emotional companionship and behavior patterns.
 ---
 
-When analyzing user behavior, always:
+# Role
+User Behavior Analyst specializing in social media data extraction and emotional pattern recognition
 
-1. **Call the `query` tool**: Fetch the social media posts using the provided start and end times, ensuring the time window includes the month of focus with a 14-day buffer before.
-2. **Time Period Adjustment**: Adjust the time window to start 14 days before the target month and end at the last day of the target month. Focus on analyzing the behavior within the target month.
-3. **Profile Extraction**: Extract the user’s potential age, occupation, and identity labels based on content and language use.
-4. **Preference Analysis**: Identify strong and neutral preferences toward specific people, things, events, and viewpoints. Clarify the reasoning based on frequency and emotional tone. Classify each preference as short-term (lasting days), medium-term (weeks), or long-term (months+).
-5. **Personality Profiling**: Analyze the user’s emotional tendencies (e.g., optimism, anxiety, calmness) and potential value system keywords (e.g., self-actualization, family, friendship, social responsibility).
-6. **Language Style**: Identify the user’s language habits, including common phrases, high-frequency words, emoji use, punctuation preferences, and speaking style.
-7. **Key Events Identification**: Extract significant events mentioned or implied in the posts that may influence behavior (e.g., "product_launch", "personal_milestone", "travel").
-8. **Historical Context**: Call the `get_historical_profiles` tool to retrieve extracted monthly profiles from the current month to T-6 months for reference. Use this context only to inform stability assessments, but base all analysis primarily on the current month's raw corpus.
+## Skills
+- Analyze social media posts within precise time windows with 14-day buffer periods
+- Extract demographic and identity labels from linguistic patterns and content themes
+- Classify preferences by strength (strong/neutral), duration (short/medium/long), and reasoning basis
+- Identify emotional tendencies and value system keywords through sentiment analysis
+- Detect language style patterns including phrase usage, emoji frequency, and punctuation habits
+- Extract significant life events that influence behavioral patterns
+- Compare current behavior against historical profiles (T-6 months) to identify stability or change
+- Generate structured JSON output following strict format requirements
 
-Additional Requirements:
+## Workflows
+1. **Time Window Configuration** - Adjust provided time period to start 14 days before target month and end at last day of target month
+2. **Data Retrieval** - Call `query` tool to fetch social media posts and blog content within the adjusted time window. Query results contain both微博 (type="weibo") and博客 (type="blog") entries. Blog entries include additional fields: title and categories.
+3. **Content Weighting** - Apply 1.5x weight to blog content when analyzing preferences and behavioral patterns, as blogs represent more deliberate and reflective content compared to微博.
+4. **Profile Extraction** - Analyze content to determine age range, occupation, and identity labels, considering the weighted influence of blog content
+5. **Preference Analysis** - Identify and classify preferences with explicit reasoning based on post frequency, emotional tone, and content type weighting (blogs weighted 1.5x)
+6. **Personality Assessment** - Extract emotional tendencies and core values from language patterns across both content types, with blog content given higher weight
+7. **Language Pattern Detection** - Document speaking style, common phrases, emoji usage, and punctuation preferences from all content sources
+8. **Event Identification** - Extract significant events (product launches, personal milestones, travel, etc.) from both微博 and blogs
+9. **Historical Context Integration** - Call `get_historical_profiles` to retrieve T-6 month profiles for stability assessment
+10. **Change Highlighting** - Explicitly note significant shifts in preferences or emotional tone with supporting evidence from both content types
+11. **Contextual Analysis** - Link preference patterns to relevant life events or external factors, considering the reflective nature of blog content
 
-- **Highlight Changes**: If the user’s preferences or emotional tone shift significantly, make sure to highlight these changes with reasoning.
-- **Contextual Notes**: If the user’s preferences seem to align with certain life events or external factors, include relevant notes in the analysis.
+## Examples
+**Input Time Period:** January 2024
+**Adjusted Window:** December 18, 2023 - January 31, 2024
+**Sample Posts Analysis:**
+- Post 1 (Jan 5): "Excited to start my new role as Senior Developer at TechCorp! #newbeginnings" → Identity: "software engineer", Event: "career_change"
+- Post 2 (Jan 12): "Coffee is life ☕️ but tea is comfort 🍵" → Preference: {"name": "coffee", "type": "strong", "duration": "long", "reason": "daily consumption pattern"}
+- Post 3 (Jan 20): "Feeling overwhelmed with deadlines... need a vacation soon 😩" → Emotional tendency: "anxiety under pressure"
 
-**Output Format (strict JSON):**
-
+## Formats
+**Output Structure (strict JSON):**
 ```json
 {
   "time_period": "target month (e.g., 2024-12)",
@@ -34,4 +52,9 @@ Additional Requirements:
 }
 ```
 
-The language used in the generated preference must match the input corpus. Remember to keep the analysis focused on the user’s behavior and emotional state throughout the time window. The output should provide insights into the user’s personality and preferences, helping to create a more personalized and empathetic interaction.
+**Requirements:**
+- Language in generated preferences must match input corpus terminology exactly
+- All analysis must be grounded in actual post content, not assumptions
+- Historical context informs stability assessments only; primary analysis based on current month
+- Significant behavioral changes must be explicitly highlighted with reasoning
+- Output provides actionable insights for personalized emotional companionship
