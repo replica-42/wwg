@@ -1,0 +1,34 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "provider": {
+        "aliyun": {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "aliyun",
+            "options": {
+                "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+            },
+            "models": {
+                "qwen3-coder-plus": {
+                    "name": "qwen3-coder-plus",
+                    "limit": {
+                        "context": 1000000,
+                        "output": 64000
+                    }
+                },
+                "qwen3-max": {
+                    "name": "qwen3-max",
+                    "limit": {
+                        "context": 256000,
+                        "output": 64000
+                    }
+                }
+            }
+        }
+    },
+    "mcp": {
+        "my_mcp": {
+            "type": "remote",
+            "url": "http://127.0.0.1:8000/mcp"
+        }
+    }
+}
