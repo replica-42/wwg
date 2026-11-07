@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build>=0.9.15,<0.10.0"]
+requires = ["uv_build>=0.13.7,<0.14.0"]
 build-backend = "uv_build"
 
 # from https://peps.python.org/pep-0621/
@@ -8,34 +8,43 @@ name = "wwg"
 version = "0.3.0"
 description = "Weibo Wordcloud Generator"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 license = { file = "LICENSE" }
 authors = [{ name = "replica42", email = "replica42@outlook.com" }]
 maintainers = []
 keywords = []
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
 ]
 
 dependencies = [
-    "beautifulsoup4~=4.14.3",
+    "beautifulsoup4~=4.15.0",
     "dacite~=1.9.2",
     "html5lib~=1.1",
     "jieba~=0.42.1",
-    "requests~=2.32.4",
-    "tomli~=2.3.0",
-    "typer~=0.20.0",
-    "wordcloud~=1.9.4",
+    "requests~=2.34.2",
+    "typer~=0.28.0",
+    "wordcloud~=1.9.6",
     "thulac~=0.2.2",
     "pkuseg~=0.0.25",
-    "numpy~=2.3.5",
-    "hanlp~=2.1.3",
-    "fastmcp>=2.14.2",
+    "numpy~=2.5.4",
+    # HanLP 2.1.6/2.1.7 require the unpublished hanlp-common>=0.0.24.
+    "hanlp~=2.1.5",
+    "pillow~=13.0.0",
+    "matplotlib~=3.11.2",
 ]
 
 [project.optional-dependencies]
-dev = ["black", "flake8", "isort", "mypy", "ipython", "pre-commit", "types-requests", "types-beautifulsoup4"]
+dev = [
+    "black~=26.10.1",
+    "flake8~=7.5.0",
+    "isort~=9.0.2",
+    "mypy~=2.4.1",
+    "ipython~=9.18.1",
+    "pre-commit~=4.7.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/replica-42/wwg"
@@ -50,6 +59,9 @@ profile = "black"
 [tool.mypy]
 strict = false
 follow_untyped_imports = true
+
+[tool.uv]
+prerelease = "disallow"
 
 [tool.uv.extra-build-dependencies]
 pkuseg = ["numpy"]

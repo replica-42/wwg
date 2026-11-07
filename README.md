@@ -4,13 +4,16 @@
 
 ## 安装
 
-将本项目 clone 至本地后使用 pip 安装（推荐配合虚拟环境食用）
+需要 Python 3.14 及以上版本，仓库默认使用 Python 3.14。推荐使用 uv 创建虚拟环境并安装依赖：
 
 ```console
 $ git clone https://github.com/replica-42/wwg.git
 $ cd wwg
-$ pip install .
+$ uv sync
+$ uv run wwg --help
 ```
+
+开发环境使用 `uv sync --extra dev`。下文的 `wwg` 命令可通过 `uv run wwg` 执行，或先激活 `.venv` 后执行。
 
 或在本项目 release 下载 whl 包后使用 pip 安装
 

@@ -7,7 +7,7 @@ import typer
 
 import wwg.crawl
 import wwg.generate
-from wwg.config import Config, init_config, init_logger, update_config, SplitUse
+from wwg.config import Config, SplitUse, init_config, init_logger, update_config
 
 logger = logging.getLogger("wwg")
 
@@ -173,7 +173,7 @@ def generate(
         Optional[SplitUse],
         typer.Option(
             help="word segmentation tool, choose from 'jieba', 'thulac', 'pkuseg'",
-        )
+        ),
     ] = None,
 ) -> None:
     config = CONFIG.generate

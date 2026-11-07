@@ -1,12 +1,12 @@
 import logging
 import sys
+import tomllib
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 from enum import StrEnum
+from pathlib import Path
 
 import dacite
-import tomli
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def init_logger(verbose: bool) -> None:
 
 def init_config(config_file: Path) -> Config:
     config_str = config_file.read_text(encoding="utf-8")
-    config_dict = tomli.loads(config_str)
+    config_dict = tomllib.loads(config_str)
     return dacite.from_dict(
         Config,
         config_dict,

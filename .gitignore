@@ -286,5 +286,3 @@ dict.txt
 *.png
 mask.drawio
 !mask/*.png
-blogs/
-preferences/
