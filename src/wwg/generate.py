@@ -25,6 +25,23 @@ logger = logging.getLogger(__name__)
 
 jieba.setLogLevel(logging.ERROR)
 
+# Sentence punctuation and enclosing marks, excluding symbols used in names
+# such as C++, C# and hyphenated words.
+BOUNDARY_PUNCTUATION = "，。！？；：、,.!?;:（）()[]{}<>《》〈〉【】「」『』“”‘’\"'"
+
+
+def strip_word_boundaries(word: str) -> str:
+    start, end = 0, len(word)
+    while start < end and (
+        word[start].isspace() or word[start] in BOUNDARY_PUNCTUATION
+    ):
+        start += 1
+    while end > start and (
+        word[end - 1].isspace() or word[end - 1] in BOUNDARY_PUNCTUATION
+    ):
+        end -= 1
+    return word[start:end]
+
 
 def get_stopwords() -> set[str]:
     result = set(
@@ -67,9 +84,14 @@ def main(config: GenerateConfig) -> None:
     hantok = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
     hantok.dict_force = None  # type: ignore
     hantok.dict_combine = None  # type: ignore
+    dict_content: set[str] = set()
     if config.custom_dict is not None:
         logger.debug(f"load custom_dict from {config.custom_dict}")
-        dict_content = set(config.custom_dict.read_text(encoding="utf-8").split("\n"))
+        dict_content = {
+            word.strip()
+            for word in config.custom_dict.read_text(encoding="utf-8").splitlines()
+            if word.strip()
+        }
         jieba.load_userdict(str(config.custom_dict))
         thu = thulac.thulac(
             user_dict=str(config.custom_dict),
@@ -85,7 +107,14 @@ def main(config: GenerateConfig) -> None:
         pku = pkuseg.pkuseg(model_name="web")
 
     word_list = split_word(
-        weibo_list, config.before, config.after, config.split_use, thu, pku, hantok
+        weibo_list,
+        config.before,
+        config.after,
+        config.split_use,
+        thu,
+        pku,
+        hantok,
+        protected_words=dict_content,
     )
 
     mask = None
@@ -121,9 +150,12 @@ def split_word(
     thu: thulac.thulac,
     pku: pkuseg.pkuseg,
     hantok: Component,
+    protected_words: set[str] | None = None,
 ) -> list[str]:
     count, length = 0, 0
     stopwords = get_stopwords()
+    protected_words = protected_words or set()
+    exclude = {"网页链接", "网页", "链接", "jpg", ".jpg"}
     result: list[str] = []
 
     for content, create_at in weibo_list:
@@ -141,34 +173,20 @@ def split_word(
             word_list = split_use_jieba(content)
 
         for word in word_list:
-            if (
-                word not in stopwords
-                and word != ""
-                and not all(letter in stopwords for letter in word)
+            word = strip_word_boundaries(word)
+            if not word:
+                continue
+            if word in protected_words or (
+                len(word) > 1
+                and word not in stopwords
+                and word not in exclude
+                and any(letter.isalnum() for letter in word)
             ):
                 result.append(word)
 
-    # remove single character words
-    result = [word for word in result if len(word) > 1]
-
-    # remove some common words
-    exclude = {"网页链接", "网页", "链接", "jpg", ".jpg"}
-    result = [word for word in result if word not in exclude]
-
-    # remove subwords
-    unique_result = set(result)
-    need_remove = set()
-    for s in unique_result:
-        for t in unique_result:
-            if t in s and len(s) > len(t) and (len(t) == 1 or len(s) - len(t) == 1):
-                need_remove.add(t)
-
-    result = [word for word in result if word not in need_remove]
-
-    # remove word that only appears once
+    # Keep rare dictionary entries; ordinary words still need two occurrences.
     counter = Counter(result)
-    need_remove = set(x for x, y in counter.items() if y == 1)
-    result = [word for word in result if word not in need_remove]
+    result = [word for word in result if word in protected_words or counter[word] > 1]
 
     logger.debug(
         f"using {count} Weibo posts with {length} characters, {len(result)} words"

@@ -2,13 +2,213 @@ import json
 import os
 import subprocess
 import sys
+from collections import Counter
 from datetime import datetime
 
 import pytest
 from PIL import Image
 
 from wwg import generate
-from wwg.config import GenerateConfig
+from wwg.config import GenerateConfig, SplitUse
+
+
+@pytest.fixture
+def filter_words(mocker):
+    def run(words, protected_words=None, backend=SplitUse.HANLP):
+        mocker.patch.object(generate, "split_use_jieba", return_value=words)
+        thu, pku, hantok = mocker.Mock(), mocker.Mock(), mocker.Mock()
+        thu.cut.return_value = [(word, "") for word in words]
+        pku.cut.return_value = words
+        hantok.return_value = words
+        return generate.split_word(
+            [("sample", datetime(2026, 1, 1))],
+            datetime(2027, 1, 1),
+            datetime(2025, 1, 1),
+            backend,
+            thu,
+            pku,
+            hantok,
+            protected_words=protected_words,
+        )
+
+    return run
+
+
+@pytest.mark.parametrize("backend", list(SplitUse))
+def test_dictionary_words_survive_single_character_stopword_and_frequency_filters(
+    filter_words, backend
+):
+    words = ["侑", "瑛", "soyo", "たきな", "33号远征队", "的"]
+    assert filter_words(words, set(words), backend) == words
+
+
+def test_whole_words_are_not_removed_based_on_their_characters(filter_words):
+    words = ["soyo", "mio", "不好"] * 2
+    assert filter_words(words) == words
+
+
+@pytest.mark.parametrize(
+    "word",
+    [
+        "只能",
+        "都是",
+        "一点",
+        "一遍",
+        "有种",
+        "有没有",
+        "能不能",
+        "那种",
+        "又是",
+        "尤其是",
+        "没什么",
+        "是因为",
+    ],
+)
+def test_low_information_words_are_removed_unless_protected(filter_words, word):
+    assert filter_words([word, word, "喜欢", "喜欢"]) == ["喜欢", "喜欢"]
+    assert filter_words([word], {word}) == [word]
+
+
+def test_added_stopwords_only_match_whole_tokens(filter_words):
+    assert filter_words(["一点", "那种", "一点点", "那种感觉"] * 2) == [
+        "一点点",
+        "那种感觉",
+        "一点点",
+        "那种感觉",
+    ]
+
+
+@pytest.mark.parametrize("word", ["战斗", "总结", "相信", "认真", "novel", "useful"])
+def test_restored_content_words_still_require_two_occurrences(filter_words, word):
+    assert filter_words([word, word]) == [word, word]
+    assert filter_words([word]) == []
+
+
+def test_longer_words_do_not_remove_shorter_words(filter_words):
+    words = ["剧情", "剧情片", "可爱", "小可爱", "艾莉", "艾莉卡"] * 2
+    assert filter_words(words) == words
+
+
+def test_boundary_cleanup_merges_variants_before_frequency_filter(filter_words):
+    assert Counter(
+        filter_words(["たきな", "。たきな", "たきな）", " \t「 たきな 」\u3000"])
+    ) == {"たきな": 4}
+
+
+def test_boundary_cleanup_precedes_dictionary_lookup(filter_words):
+    assert filter_words(["（侑）", "「soyo」"], {"侑", "soyo"}) == ["侑", "soyo"]
+
+
+def test_internal_punctuation_and_name_symbols_are_preserved(filter_words):
+    words = ["C++", "C#", "Sea-Bed", "v1.2", "O'Connor"] * 2
+    assert filter_words(words) == words
+
+
+def test_ordinary_stopwords_short_words_and_noise_are_still_removed(filter_words):
+    words = [
+        "可以",
+        "爱",
+        "网页链接",
+        ".jpg",
+        "",
+        " \t\n",
+        "（。！？）",
+        "——",
+        "✨✨",
+    ] * 2
+    assert filter_words(words + ["稀有候选", "正常候选", "正常候选"]) == [
+        "正常候选",
+        "正常候选",
+    ]
+
+
+def test_date_filter_runs_before_protected_word_frequency_handling(mocker):
+    hantok = mocker.Mock(return_value=["侑"])
+    assert generate.split_word(
+        [
+            ("excluded", datetime(2025, 12, 31)),
+            ("start", datetime(2026, 1, 1)),
+            ("end", datetime(2026, 1, 2)),
+            ("excluded", datetime(2026, 1, 3)),
+        ],
+        datetime(2026, 1, 2),
+        datetime(2026, 1, 1),
+        SplitUse.HANLP,
+        None,
+        None,
+        hantok,
+        protected_words={"侑"},
+    ) == ["侑", "侑"]
+    assert hantok.call_args_list == [mocker.call("start"), mocker.call("end")]
+
+
+def test_main_passes_custom_dictionary_to_filtering(source_file, tmp_path, mocker):
+    source_file.write_text(
+        json.dumps({"content": "侑 soyo", "create_at": "2026-01-01T00:00:00"}),
+        encoding="utf-8",
+    )
+    dictionary = tmp_path / "dict.txt"
+    dictionary.write_text("\n侑\r\nsoyo\r\n\n", encoding="utf-8")
+    mocker.patch.object(generate.jieba, "load_userdict")
+    hanlp = mocker.patch.object(generate.hanlp, "load")
+    hanlp.return_value.return_value = ["侑", "soyo"]
+    mocker.patch.object(generate.thulac, "thulac")
+    mocker.patch.object(generate.pkuseg, "pkuseg")
+    cloud = mocker.patch.object(generate, "generate_wordcloud")
+
+    generate.main(
+        GenerateConfig(
+            input=source_file,
+            custom_dict=dictionary,
+            split_use=SplitUse.HANLP,
+            before=datetime(2027, 1, 1),
+        )
+    )
+
+    assert Counter(cloud.call_args.args[0]) == {"侑": 1, "soyo": 1}
+    assert hanlp.return_value.dict_force == {"侑", "soyo"}
+    hanlp.return_value.assert_called_once_with("侑 soyo")
+
+
+def test_real_hanlp_segmentation_and_filtering(source_file, tmp_path, mocker):
+    model_path = os.environ.get("WWG_TEST_HANLP_MODEL")
+    if not model_path:
+        pytest.skip("Set WWG_TEST_HANLP_MODEL to run real HanLP inference")
+    hantok = generate.hanlp.load(model_path, devices=-1)
+    source_file.write_text(
+        json.dumps(
+            {
+                "content": "soyo喜欢侑。たきな也很可爱。游戏剧情很好。游戏剧情很可爱。",
+                "create_at": "2026-01-01T00:00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+    dictionary = tmp_path / "dict.txt"
+    dictionary.write_text("侑\nsoyo\nたきな\n", encoding="utf-8")
+    mocker.patch.object(generate.hanlp, "load", return_value=hantok)
+    mocker.patch.object(generate.jieba, "load_userdict")
+    mocker.patch.object(generate.thulac, "thulac")
+    mocker.patch.object(generate.pkuseg, "pkuseg")
+    cloud = mocker.patch.object(generate, "generate_wordcloud")
+
+    generate.main(
+        GenerateConfig(
+            input=source_file,
+            custom_dict=dictionary,
+            split_use=SplitUse.HANLP,
+            before=datetime(2027, 1, 1),
+        )
+    )
+
+    assert Counter(cloud.call_args.args[0]) == {
+        "soyo": 1,
+        "侑": 1,
+        "たきな": 1,
+        "可爱": 2,
+        "游戏": 2,
+        "剧情": 2,
+    }
 
 
 def test_reads_valid_records_with_trailing_newline(source_file):
@@ -78,10 +278,16 @@ def test_valid_file_generates_image_and_initializes_all_backends(
     )
     output = tmp_path / "cloud.png"
     hanlp = mocker.patch.object(generate.hanlp, "load")
+    hanlp.return_value.return_value = ["apple", "banana", "apple", "banana"]
     thulac = mocker.patch.object(generate.thulac, "thulac")
     pkuseg = mocker.patch.object(generate.pkuseg, "pkuseg")
     generate.main(
-        GenerateConfig(input=source_file, output=output, before=datetime(2027, 1, 1))
+        GenerateConfig(
+            input=source_file,
+            output=output,
+            before=datetime(2027, 1, 1),
+            split_use=SplitUse.HANLP,
+        )
     )
     hanlp.assert_called_once()
     thulac.assert_called_once()
