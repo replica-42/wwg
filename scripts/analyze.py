@@ -64,7 +64,7 @@ def plot_polar_by_hour(year: int) -> None:
     words_count = [0] * N
     for weibo in weibo_list:
         if weibo[1].year == year:
-            words_count[weibo[1].hour - 1] += len(weibo[0])
+            words_count[weibo[1].hour] += len(weibo[0])
 
     radii = np.array(words_count, dtype=np.int32)
 
@@ -96,4 +96,5 @@ def plot_polar_by_hour(year: int) -> None:
     plt.show()
 
 
-plot_polar_by_month(2025)
+if __name__ == "__main__":
+    plot_polar_by_month(2025)

@@ -16,6 +16,11 @@ app = typer.Typer()
 CONFIG: Config = Config()
 
 
+def confirm_overwrite(output: Path) -> None:
+    if output.exists():
+        typer.confirm(f"Output file {output} already exists. Overwrite?", abort=True)
+
+
 @app.callback()
 def main(
     verbose: bool = False,
@@ -94,6 +99,7 @@ def crawl(
     logger.debug(f"max_page: {config.max_page}")
     logger.debug(f"after: {config.after}")
     logger.debug(f"output: {config.output}")
+    confirm_overwrite(config.output)
     wwg.crawl.main(config)
 
 
@@ -207,11 +213,16 @@ def generate(
     logger.debug(f"output: {config.output}")
     logger.debug(f"split_use: {config.split_use}")
 
+    confirm_overwrite(config.output)
     wwg.generate.main(CONFIG.generate)
 
 
 def entry() -> None:
-    app()
+    try:
+        app()
+    except (OSError, ValueError) as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise SystemExit(1) from None
 
 
 if __name__ == "__main__":

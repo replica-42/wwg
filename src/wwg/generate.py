@@ -39,9 +39,30 @@ def get_stopwords() -> set[str]:
     return result
 
 
+def read_weibo(input_file: Path) -> list[tuple[str, datetime]]:
+    records = []
+    with input_file.open(encoding="utf-8") as source:
+        for line_number, line in enumerate(source, start=1):
+            try:
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    raise ValueError("expected a JSON object")
+                if not isinstance(record.get("content"), str):
+                    raise ValueError("content must be a string")
+                if not isinstance(record.get("create_at"), str):
+                    raise ValueError("create_at must be a string")
+                create_at = datetime.strptime(record["create_at"], "%Y-%m-%dT%H:%M:%S")
+            except ValueError as error:
+                raise ValueError(f"{input_file}:{line_number}: {error}") from error
+            records.append((record["content"], create_at))
+    return records
+
+
 def main(config: GenerateConfig) -> None:
     if config.input is None or not config.input.exists() or not config.input.is_file():
-        raise typer.BadParameter(f"cannor read input file {config.input}")
+        raise typer.BadParameter(f"cannot read input file {config.input}")
+
+    weibo_list = read_weibo(config.input)
 
     hantok = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
     hantok.dict_force = None  # type: ignore
@@ -62,10 +83,6 @@ def main(config: GenerateConfig) -> None:
     else:
         thu = thulac.thulac(seg_only=True, filt=True, rm_space=True, T2S=True)
         pku = pkuseg.pkuseg(model_name="web")
-
-    weibo_list = config.input.read_text(encoding="utf-8").split("\n")
-    weibo_list = [weibo.strip() for weibo in weibo_list]
-    weibo_list = [weibo for weibo in weibo_list if weibo != ""]
 
     word_list = split_word(
         weibo_list, config.before, config.after, config.split_use, thu, pku, hantok
@@ -97,7 +114,7 @@ def split_use_hanlp(hantok: Component, content: str) -> list[str]:
 
 
 def split_word(
-    weibo_list: list[str],
+    weibo_list: list[tuple[str, datetime]],
     before: datetime,
     after: datetime,
     split_use: SplitUse,
@@ -109,26 +126,19 @@ def split_word(
     stopwords = get_stopwords()
     result: list[str] = []
 
-    for weibo in weibo_list:
-        try:
-            content: dict[str, str] = json.loads(weibo)
-        except json.JSONDecodeError:
-            logger.error(f"cannot parse {weibo}")
-            continue
-
-        create_at = datetime.strptime(content["create_at"], "%Y-%m-%dT%H:%M:%S")
+    for content, create_at in weibo_list:
         if create_at < after or create_at > before:
             continue
         count += 1
-        length += len(content["content"])
+        length += len(content)
         if split_use == SplitUse.PKUSEG:
-            word_list = split_use_pkuseg(pku, content["content"])
+            word_list = split_use_pkuseg(pku, content)
         elif split_use == SplitUse.THULAC:
-            word_list = split_use_thulac(thu, content["content"])
+            word_list = split_use_thulac(thu, content)
         elif split_use == SplitUse.HANLP:
-            word_list = split_use_hanlp(hantok, content["content"])
+            word_list = split_use_hanlp(hantok, content)
         else:  # SplitUse.JIEBA
-            word_list = split_use_jieba(content["content"])
+            word_list = split_use_jieba(content)
 
         for word in word_list:
             if (
@@ -186,5 +196,5 @@ def generate_wordcloud(
         # color_func=color_func,
         colormap="ocean",
     )
-    cloud.generate(" ".join(word_list))
+    cloud.generate_from_frequencies(Counter(word_list))
     cloud.to_file(output)

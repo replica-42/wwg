@@ -44,6 +44,8 @@ dev = [
     "mypy~=2.4.1",
     "ipython~=9.18.1",
     "pre-commit~=4.7.0",
+    "pytest~=9.2.0",
+    "pytest-mock~=3.17.0",
 ]
 
 [project.urls]
@@ -59,6 +61,10 @@ profile = "black"
 [tool.mypy]
 strict = false
 follow_untyped_imports = true
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+testpaths = ["tests"]
 
 [tool.uv]
 prerelease = "disallow"

@@ -34,17 +34,26 @@ def retry_get(
     headers: dict[str, str],
     predictor: Callable[[requests.Response], bool],
     max_retries: int = 3,
-) -> requests.Response | None:
-    response = requests.get(url, headers=headers)
-    i = 0
+) -> requests.Response:
+    retries = 0
     wait_time = 1
-    while i < max_retries and not predictor(response):
-        logger.debug(f"get {url} failed, retry after {wait_time}s")
-        time.sleep(wait_time)
-        wait_time *= 2
-        response = requests.get(url, headers=headers)
-        i += 1
-    return response if predictor(response) else None
+    while True:
+        try:
+            response = requests.get(url, headers=headers, timeout=(5, 30))
+            response.raise_for_status()
+            if not predictor(response):
+                raise requests.RequestException(
+                    f"Unexpected response from {url}: HTTP {response.status_code}",
+                    response=response,
+                )
+            return response
+        except requests.RequestException as error:
+            if retries >= max_retries:
+                raise
+            logger.warning("get %s failed (%s), retry after %ss", url, error, wait_time)
+            time.sleep(wait_time)
+            wait_time *= 2
+            retries += 1
 
 
 def weibo_predictor(tag: Tag) -> bool:
@@ -115,59 +124,50 @@ def main(config: CrawlConfig) -> None:
 def crawl_page(
     url: str, headers: dict[str, str], original_only: bool
 ) -> Generator[Weibo, None, str | None]:
-    if (
-        response := retry_get(url, headers, lambda r: r.status_code == 200)
-    ) is not None:
-        soup = BeautifulSoup(
-            response.text.removeprefix('<?xml version="1.0" encoding="UTF-8"?>'),
-            "html5lib",
-        )
-        weibo_list: list[Tag] = soup.find_all(weibo_predictor)
-        for weibo in weibo_list:
-            if original_only and len(weibo.find_all(repost_predictor)) > 0:
-                continue
-            weibo_id = weibo.attrs["id"].removeprefix("M_")
-            if (
-                full_text := weibo.find(full_text_predictor)
-            ) is not None and isinstance(full_text, Tag):
-                yield from crawl_full_text(
-                    weibo_id, f"{base_url}{full_text.attrs['href']}", headers
-                )
-                time.sleep(3 + random.random() * 2)
-            elif (result := parse_weibo(weibo_id, weibo)) is not None:
-                yield result
-            else:
-                logger.warning(f"parse weibo {weibo_id} failed")
-        if (next_page := soup.find(next_page_predictor)) is not None and isinstance(
-            next_page, Tag
+    response = retry_get(url, headers, lambda r: r.status_code == 200)
+    soup = BeautifulSoup(
+        response.text.removeprefix('<?xml version="1.0" encoding="UTF-8"?>'),
+        "html5lib",
+    )
+    weibo_list: list[Tag] = soup.find_all(weibo_predictor)
+    for weibo in weibo_list:
+        if original_only and len(weibo.find_all(repost_predictor)) > 0:
+            continue
+        weibo_id = weibo.attrs["id"].removeprefix("M_")
+        if (full_text := weibo.find(full_text_predictor)) is not None and isinstance(
+            full_text, Tag
         ):
-            return next_page.attrs["href"]
+            yield from crawl_full_text(
+                weibo_id, f"{base_url}{full_text.attrs['href']}", headers
+            )
+            time.sleep(3 + random.random() * 2)
+        elif (result := parse_weibo(weibo_id, weibo)) is not None:
+            yield result
         else:
-            logger.debug("cannot find next page href")
-            return None
+            logger.warning(f"parse weibo {weibo_id} failed")
+    if (next_page := soup.find(next_page_predictor)) is not None and isinstance(
+        next_page, Tag
+    ):
+        return next_page.attrs["href"]
     else:
-        logger.error(f"crawl page {url} failed")
+        logger.debug("cannot find next page href")
         return None
 
 
 def crawl_full_text(
     weibo_id: str, url: str, headers: dict[str, str]
 ) -> Generator[Weibo, None, None]:
+    response = retry_get(url, headers, lambda r: r.status_code == 200)
+    soup = BeautifulSoup(
+        response.text.removeprefix('<?xml version="1.0" encoding="UTF-8"?>'),
+        "html5lib",
+    )
     if (
-        response := retry_get(url, headers, lambda r: r.status_code == 200)
-    ) is not None:
-        soup = BeautifulSoup(
-            response.text.removeprefix('<?xml version="1.0" encoding="UTF-8"?>'),
-            "html5lib",
-        )
-        if (
-            (weibo := soup.find(weibo_predictor)) is not None
-            and isinstance(weibo, Tag)
-            and (result := parse_weibo(weibo_id, weibo)) is not None
-        ):
-            yield result
-    else:
-        logger.error(f"crawl weibo {weibo_id} full text failed")
+        (weibo := soup.find(weibo_predictor)) is not None
+        and isinstance(weibo, Tag)
+        and (result := parse_weibo(weibo_id, weibo)) is not None
+    ):
+        yield result
     return None
 
 

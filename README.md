@@ -15,6 +15,8 @@ $ uv run wwg --help
 
 开发环境使用 `uv sync --extra dev`。下文的 `wwg` 命令可通过 `uv run wwg` 执行，或先激活 `.venv` 后执行。
 
+回归测试使用 `uv run --locked --extra dev pytest`。按照 [pytest 对 src 布局的建议](https://docs.pytest.org/en/stable/explanation/goodpractices.html#tests-outside-application-code)，使用 `importlib` 导入模式，不手动向 `sys.path` 或 `PYTHONPATH` 添加仓库或 `src` 路径；应用通过 `.venv` 中的 editable 安装导入。
+
 或在本项目 release 下载 whl 包后使用 pip 安装
 
 ## quickstart
@@ -51,6 +53,8 @@ $ wwg crawl --original-only
 
 运行结束后当前目录下应当有名为 `weibo.jsonl` 的文件
 
+如果输出文件已存在，爬取和生成命令都会提示是否覆盖，默认选择 N。网络请求会在连接或读取超时、请求失败时进行有限重试，仍失败则报错退出。
+
 继续执行
 
 ```console
@@ -58,6 +62,8 @@ $ wwg generate --font %SystemRoot%\Fonts\simsun.ttc
 ```
 
 运行结束后当前目录下应当有名为 `weibo.png` 的文件，即为生成的词云
+
+输入文件使用 JSONL 格式，每行必须是包含字符串字段 `content` 和 `create_at` 的 JSON 对象，时间格式为 `YYYY-MM-DDTHH:MM:SS`。读取时逐行校验，遇到无效记录会报告文件路径、行号和原因，并中断生成。
 
 ## 配置
 
