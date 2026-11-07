@@ -19,6 +19,25 @@ $ uv run wwg --help
 
 过滤回归测试以 HanLP 为基准。设置 `WWG_TEST_HANLP_MODEL` 为已下载的 `COARSE_ELECTRA_SMALL_ZH` 模型目录，可在同一 pytest 命令中运行真实模型推理用例；未设置时跳过该用例，其余过滤测试使用固定候选词，不需要下载模型。
 
+分词后端的外部模型和缓存默认保存在**命令启动工作目录**的 `data/` 下。可在 `config.toml` 顶层（任何 `[表名]` 之前）设置 `data_dir`，支持绝对路径；相对路径按命令启动目录解析，不相对于配置文件或安装目录：
+
+```toml
+data_dir = "data"
+
+[generate]
+split_use = "hanlp"
+```
+
+数据目录中包含以下子目录：
+
+- `data/hanlp/`：HanLP 下载的模型、词表及配套资源。
+- `data/pkuseg/`：pkuseg 下载的 `web` 模型，包括压缩包和解压目录。
+- `data/jieba/`：Jieba 生成的词典缓存。
+
+CLI 先读取配置并设置 `HANLP_HOME`、`PKUSEG_HOME`，再统一导入所有分词后端，避免后端在导入时固定旧路径；生成时设置 Jieba 缓存目录。仅查看帮助或爬取微博不会主动创建这些目录。THULAC 自带模型、Jieba 基础词典和 pkuseg 自带词典仍属于安装包，不搬动或修改 `.venv` 中的文件。
+
+`data/` 已加入 Git 忽略规则。已有 HanLP 数据可整体迁移到数据目录的 `hanlp/` 子目录；pkuseg 缓存迁移时须保留 `web.zip` 和 `web/`，其下载器通过压缩包判断是否已经下载。首次生成时会下载缺少的外部模型。离线分发时，将准备好的数据目录随应用分发，并通过 `data_dir` 指向它；`uv sync` 本身不下载这些模型。真实 HanLP 回归测试从含有完整 `data/hanlp/` 的工作目录启动。
+
 或在本项目 release 下载 whl 包后使用 pip 安装
 
 ## quickstart
@@ -56,6 +75,8 @@ $ wwg crawl --original-only
 运行结束后当前目录下应当有名为 `weibo.jsonl` 的文件
 
 如果输出文件已存在，爬取和生成命令都会提示是否覆盖，默认选择 N。网络请求会在连接或读取超时、请求失败时进行有限重试，仍失败则报错退出。
+
+使用 `uv run wwg --verbose crawl` 查看抓取进度，包括当前页、页面微博条数、跳过转发、全文请求、每条写入及累计数量、等待时间和停止原因。`--verbose` 放在 `crawl` 子命令之前。
 
 继续执行
 
@@ -150,6 +171,8 @@ generate 子命令的配置项均位于表 `generate` 下
 ### 配置文件示例
 
 ```toml
+data_dir = "data"
+
 [crawl]
 uid = ""
 cookies = ""

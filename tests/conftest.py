@@ -5,6 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from wwg import __main__ as cli
+from wwg import data, generate  # noqa: F401 - expose generate for CLI mocks
 from wwg.config import Config
 
 
@@ -12,6 +13,9 @@ from wwg.config import Config
 def cli_runner(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(cli, "CONFIG", Config())
+    monkeypatch.setattr(data, "DATA_DIR", data.DATA_DIR)
+    monkeypatch.setenv("HANLP_HOME", str(data.DATA_DIR / "hanlp"))
+    monkeypatch.setenv("PKUSEG_HOME", str(data.DATA_DIR / "pkuseg"))
     monkeypatch.setattr(cli, "init_logger", lambda verbose: None)
     return CliRunner()
 

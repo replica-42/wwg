@@ -44,6 +44,7 @@ class GenerateConfig:
 
 @dataclass
 class Config:
+    data_dir: Path = field(default_factory=lambda: Path("data").resolve())
     crawl: CrawlConfig = field(default_factory=CrawlConfig)
     generate: GenerateConfig = field(default_factory=GenerateConfig)
 

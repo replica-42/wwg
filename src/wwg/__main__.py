@@ -6,8 +6,8 @@ from typing import Annotated, Optional
 import typer
 
 import wwg.crawl
-import wwg.generate
 from wwg.config import Config, SplitUse, init_config, init_logger, update_config
+from wwg.data import configure_data_paths
 
 logger = logging.getLogger("wwg")
 
@@ -40,6 +40,8 @@ def main(
         CONFIG = init_config(config_file)
     else:
         logger.debug("using default configuration")
+
+    configure_data_paths(CONFIG.data_dir)
 
 
 @app.command(
@@ -214,6 +216,10 @@ def generate(
     logger.debug(f"split_use: {config.split_use}")
 
     confirm_overwrite(config.output)
+    # HanLP and pkuseg freeze resource paths at import time.
+    # Import all backends together, after the callback has read configuration.
+    import wwg.generate
+
     wwg.generate.main(CONFIG.generate)
 
 

@@ -174,7 +174,7 @@ def test_real_hanlp_segmentation_and_filtering(source_file, tmp_path, mocker):
     model_path = os.environ.get("WWG_TEST_HANLP_MODEL")
     if not model_path:
         pytest.skip("Set WWG_TEST_HANLP_MODEL to run real HanLP inference")
-    hantok = generate.hanlp.load(model_path, devices=-1)
+    load_model = generate.hanlp.load
     source_file.write_text(
         json.dumps(
             {
@@ -186,7 +186,9 @@ def test_real_hanlp_segmentation_and_filtering(source_file, tmp_path, mocker):
     )
     dictionary = tmp_path / "dict.txt"
     dictionary.write_text("侑\nsoyo\nたきな\n", encoding="utf-8")
-    mocker.patch.object(generate.hanlp, "load", return_value=hantok)
+    mocker.patch.object(
+        generate.hanlp, "load", side_effect=lambda _: load_model(model_path, devices=-1)
+    )
     mocker.patch.object(generate.jieba, "load_userdict")
     mocker.patch.object(generate.thulac, "thulac")
     mocker.patch.object(generate.pkuseg, "pkuseg")

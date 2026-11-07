@@ -19,6 +19,7 @@ from numpy.typing import NDArray
 from PIL import Image
 
 import wwg
+from wwg import data
 from wwg.config import GenerateConfig, SplitUse
 
 logger = logging.getLogger(__name__)
@@ -81,6 +82,9 @@ def main(config: GenerateConfig) -> None:
 
     weibo_list = read_weibo(config.input)
 
+    jieba_cache = data.DATA_DIR / "jieba"
+    jieba_cache.mkdir(parents=True, exist_ok=True)
+    jieba.dt.tmp_dir = str(jieba_cache)
     hantok = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
     hantok.dict_force = None  # type: ignore
     hantok.dict_combine = None  # type: ignore

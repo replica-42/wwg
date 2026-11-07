@@ -99,26 +99,66 @@ def main(config: CrawlConfig) -> None:
     url = f"{base_url}/{config.uid}/profile"
     if config.start_page > 1:
         url = f"{url}?page={config.start_page}"
+    total_written = 0
+    pages_fetched = 0
+    logger.debug("start crawling; output: %s", config.output)
     with open(config.output, "w", encoding="utf-8") as f:
         current_page = config.start_page
         flag = True
         while flag and (config.max_page < 0 or current_page <= config.max_page):
+            page_written = 0
+            pages_fetched += 1
+            logger.debug("fetch page %d: %s", current_page, url)
             weibo_iter = crawl_page(url, headers, config.original_only)
             try:
                 while True:
                     weibo = next(weibo_iter)
                     if weibo.create_at < config.after:
+                        logger.debug(
+                            "stop: post %s at %s is older than after=%s",
+                            weibo.id,
+                            weibo.create_at,
+                            config.after,
+                        )
                         flag = False
                         break
                     f.write(f"{weibo}\n")
+                    page_written += 1
+                    total_written += 1
+                    logger.debug(
+                        "page %d: wrote post %s at %s; total written: %d",
+                        current_page,
+                        weibo.id,
+                        weibo.create_at,
+                        total_written,
+                    )
             except StopIteration as e:
                 if isinstance((next_url := e.value), str):
                     url = f"{base_url}{next_url}"
                 else:
-                    break
+                    logger.debug("stop: no next page")
+                    flag = False
+            logger.debug(
+                "page %d complete: %d posts written; total written: %d",
+                current_page,
+                page_written,
+                total_written,
+            )
+            if not flag:
+                break
+            if config.max_page >= 0 and current_page >= config.max_page:
+                logger.debug("stop: reached max_page=%d", config.max_page)
+                break
             current_page += 1
-            # sleep 2~3 s
-            time.sleep(3 + random.random() * 2)
+            delay = 3 + random.random() * 2
+            logger.debug("wait %.1fs before fetching page %d", delay, current_page)
+            time.sleep(delay)
+    logger.debug(
+        "crawl complete: %d pages fetched, %d posts written to %s",
+        pages_fetched,
+        total_written,
+        config.output,
+    )
 
 
 def crawl_page(
@@ -130,8 +170,10 @@ def crawl_page(
         "html5lib",
     )
     weibo_list: list[Tag] = soup.find_all(weibo_predictor)
+    logger.debug("page contains %d post entries", len(weibo_list))
     for weibo in weibo_list:
         if original_only and len(weibo.find_all(repost_predictor)) > 0:
+            logger.debug("skip repost %s", weibo.attrs["id"].removeprefix("M_"))
             continue
         weibo_id = weibo.attrs["id"].removeprefix("M_")
         if (full_text := weibo.find(full_text_predictor)) is not None and isinstance(
@@ -140,7 +182,9 @@ def crawl_page(
             yield from crawl_full_text(
                 weibo_id, f"{base_url}{full_text.attrs['href']}", headers
             )
-            time.sleep(3 + random.random() * 2)
+            delay = 3 + random.random() * 2
+            logger.debug("wait %.1fs after fetching full text", delay)
+            time.sleep(delay)
         elif (result := parse_weibo(weibo_id, weibo)) is not None:
             yield result
         else:
@@ -157,6 +201,7 @@ def crawl_page(
 def crawl_full_text(
     weibo_id: str, url: str, headers: dict[str, str]
 ) -> Generator[Weibo, None, None]:
+    logger.debug("fetch full text for post %s", weibo_id)
     response = retry_get(url, headers, lambda r: r.status_code == 200)
     soup = BeautifulSoup(
         response.text.removeprefix('<?xml version="1.0" encoding="UTF-8"?>'),

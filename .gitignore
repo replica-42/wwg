@@ -280,6 +280,7 @@ cython_debug/
 
 
 config.toml
+/data/
 fonts/
 dict.txt
 *.jsonl
