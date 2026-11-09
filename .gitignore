@@ -280,6 +280,7 @@ cython_debug/
 
 
 config.toml
+.DS_Store
 /data/
 fonts/
 dict.txt

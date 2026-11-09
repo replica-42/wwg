@@ -85,8 +85,43 @@ def test_restored_content_words_still_require_two_occurrences(filter_words, word
 
 
 def test_longer_words_do_not_remove_shorter_words(filter_words):
-    words = ["剧情", "剧情片", "可爱", "小可爱", "艾莉", "艾莉卡"] * 2
+    words = ["咖啡", "咖啡机", "可爱", "小可爱", "艾莉", "艾莉卡"] * 2
     assert filter_words(words) == words
+
+
+@pytest.mark.parametrize("backend", list(SplitUse))
+def test_generic_words_removed_without_losing_personal_expression(
+    filter_words, backend
+):
+    generic = ["感觉", "真的", "剧情", "作品", "博主", "体验", "东西", "回来"]
+    personal = [
+        "喜欢",
+        "讨厌",
+        "可爱",
+        "希望",
+        "不赖",
+        "有意思",
+        "力竭",
+        "遗憾",
+        "焦虑",
+        "难过",
+        "心情",
+        "生活",
+        "关系",
+        "意义",
+        "时间",
+        "感受",
+        "咖啡",
+        "下班",
+        "终末地",
+    ]
+    assert filter_words((generic + personal) * 2, backend=backend) == personal * 2
+    assert filter_words(["剧情"], {"剧情"}, backend=backend) == ["剧情"]
+
+
+def test_generic_stopwords_do_not_remove_compound_names(filter_words):
+    words = ["故事", "游戏", "世界观", "剧情片", "游戏机", "故事模式"] * 2
+    assert filter_words(words) == ["世界观", "剧情片", "游戏机", "故事模式"] * 2
 
 
 def test_boundary_cleanup_merges_variants_before_frequency_filter(filter_words):
@@ -208,8 +243,6 @@ def test_real_hanlp_segmentation_and_filtering(source_file, tmp_path, mocker):
         "侑": 1,
         "たきな": 1,
         "可爱": 2,
-        "游戏": 2,
-        "剧情": 2,
     }
 
 
